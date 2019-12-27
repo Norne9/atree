@@ -10,7 +10,7 @@ Here is the result:
 
 You need Python 3.7 (I haven't test other versions) and pyglet
 
-Install PySDL as follows: `pip install pyglet`
+Install pyglet as follows: `pip install pyglet`
 
 And now run the application: `python atree.py`
 
