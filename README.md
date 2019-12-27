@@ -4,13 +4,13 @@ I tried to make [atree](https://github.com/anvaka/atree) on python.
 
 Here is the result:
 
-![tree-min](https://user-images.githubusercontent.com/4660466/71492981-5026a180-285d-11ea-80b6-e637244b2044.png)
+![tree](https://user-images.githubusercontent.com/4660466/71518891-e9de6500-28d6-11ea-8b76-442839b20378.gif)
 
 ## How to run
 
-You need Python 3.7 (I haven't test other versions) and PySDL2
+You need Python 3.7 (I haven't test other versions) and pyglet
 
-Install PySDL as follows: `pip install PySDL2`
+Install PySDL as follows: `pip install pyglet`
 
 And now run the application: `python atree.py`
 

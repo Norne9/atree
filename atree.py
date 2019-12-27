@@ -1,12 +1,10 @@
-import sys
 import math
-import sdl2
-import sdl2.ext
-from collections import namedtuple
+import pyglet
+from dataclasses import dataclass
 
 theta_min = 0.0
 theta_max = 8.0 * math.pi
-period = 15
+period = 40
 line_spacing = 1.0 / 6.0
 line_length = line_spacing / 2.0
 y_screen_offset = 300.0
@@ -19,17 +17,28 @@ z_camera = -5.0
 g_rate = 1.0 / (2.0 * math.pi)
 g_factor = g_rate / 3.0
 
-Point = namedtuple("Point", ["x", "y", "alpha"])
-Line = namedtuple("Line", ["start", "end"])
+
+@dataclass
+class Point:
+    x: float = 0
+    y: float = 0
+    alpha: float = 0
+
+
+@dataclass
+class Line:
+    start: Point
+    end: Point
 
 
 class Spiral:
-    def __init__(self, foreground: int, angle_offset: float, factor: float):
-        self.foreground = sdl2.ext.rgba_to_color(foreground)
+    def __init__(self, foreground: tuple, angle_offset: float, factor: float):
+        self.foreground = foreground
         self.angle_offset = angle_offset
         self.factor = factor
         self.offset = 0
-        self.segments = self._compute_segments()
+        segments = self._compute_segments()
+        self.v_lists = [self._compute_buffer(s) for s in segments]
 
     def _compute_segments(self):
         segments = []
@@ -52,17 +61,20 @@ class Spiral:
             segments.append(lines)
         return segments
 
-    def _draw_segment(self, segment: Line, surface):
-        color = sdl2.ext.prepare_color(mul_color(self.foreground, segment.start.alpha), surface)
-        line = list(map(round, [segment.start.x, segment.start.y, segment.end.x, segment.end.y]))
-        sdl2.ext.line(surface, color, line)
+    def _compute_buffer(self, lines):
+        vertices, colors = [], []
+        for line in lines:
+            vertices.extend([line.start.x, 800 - line.start.y, line.end.x, 800 - line.end.y])
+            colors.extend(mul_color(self.foreground, line.start.alpha) + mul_color(self.foreground, line.end.alpha))
+        return pyglet.graphics.vertex_list(len(vertices) // 2, ("v2f/static", vertices), ("c3f/static", colors))
 
-    def render(self, surface):
+    def render(self):
+        self.v_lists[self.offset].draw(pyglet.gl.GL_LINES)
+
+    def update(self, dt: float):
         self.offset -= 1
         if self.offset <= -period:
             self.offset += period
-        for s in self.segments[self.offset]:
-            self._draw_segment(s, surface)
 
 
 def get_point(theta, factor, angle_offset, rate):
@@ -70,8 +82,8 @@ def get_point(theta, factor, angle_offset, rate):
     y = rate * theta
     z = -theta * factor * math.sin(theta + angle_offset)
 
-    alpha = math.atan((y * factor / rate * 0.1 + 0.02 - z) * 40) * 0.35 + 0.65
-    point = project2d(x, y, z, min(1.0, alpha))
+    point = project2d(x, y, z)
+    point.alpha = math.atan((y * factor / rate * 0.1 + 0.02 - z) * 40) * 0.35 + 0.65
 
     return point
 
@@ -80,62 +92,46 @@ def d_theta(theta, l_line_length, rate, factor):
     return l_line_length / math.sqrt(rate * rate + factor * factor * theta * theta)
 
 
-def project2d(x, y, z, alpha):
+def project2d(x, y, z):
     return Point(
         x=x_screen_offset + x_screen_scale * (x / (z - z_camera)),
         y=y_screen_offset + y_screen_scale * ((y - y_camera) / (z - z_camera)),
-        alpha=alpha,
     )
 
 
-def mul_color(color: sdl2.ext.Color, alpha: float):
-    new_col = sdl2.ext.Color()
-    new_col.r = round(color.r * alpha)
-    new_col.g = round(color.g * alpha)
-    new_col.b = round(color.b * alpha)
-    new_col.a = round(color.a * alpha)
-    return new_col
-
-
-def make_draw():
-    spirals = [
-        Spiral(foreground=0x220000FF, angle_offset=math.pi * 0.92, factor=0.90 * g_factor),
-        Spiral(foreground=0x002211FF, angle_offset=-math.pi * 0.08, factor=0.90 * g_factor),
-        Spiral(foreground=0x660000FF, angle_offset=math.pi * 0.95, factor=0.93 * g_factor),
-        Spiral(foreground=0x003322FF, angle_offset=-math.pi * 0.05, factor=0.93 * g_factor),
-        Spiral(foreground=0xFF0000FF, angle_offset=math.pi, factor=g_factor),
-        Spiral(foreground=0x00FFCCFF, angle_offset=0, factor=g_factor),
-    ]
-
-    def _draw(surface):
-        sdl2.ext.fill(surface, 0)
-        for s in spirals:
-            s.render(surface)
-
-    return _draw
+def mul_color(color: tuple, alpha: float):
+    r, g, b = color
+    return r * alpha, g * alpha, b * alpha
 
 
 def run():
-    sdl2.ext.init()
-    window = sdl2.ext.Window("Christmas Tree", size=(480, 800))
-    window.show()
+    window = pyglet.window.Window(480, 800, caption="Christmas Tree")
 
-    surface = window.get_surface()
-    draw = make_draw()
+    spirals = [
+        Spiral(foreground=(34 / 255, 0, 0), angle_offset=math.pi * 0.92, factor=0.90 * g_factor),
+        Spiral(foreground=(0, 34 / 255, 17 / 255), angle_offset=-math.pi * 0.08, factor=0.90 * g_factor),
+        Spiral(foreground=(102 / 255, 0, 0), angle_offset=math.pi * 0.95, factor=0.93 * g_factor),
+        Spiral(foreground=(0, 51 / 255, 34 / 255), angle_offset=-math.pi * 0.05, factor=0.93 * g_factor),
+        Spiral(foreground=(1, 0, 0), angle_offset=math.pi, factor=g_factor),
+        Spiral(foreground=(0, 1, 204 / 255), angle_offset=0, factor=g_factor),
+    ]
 
-    running = True
-    while running:
-        events = sdl2.ext.get_events()
-        for event in events:
-            if event.type == sdl2.SDL_QUIT:
-                running = False
-                break
-        draw(surface)
-        window.refresh()
-        sdl2.SDL_Delay(1000 // 60)
-    sdl2.ext.quit()
-    return 0
+    @window.event
+    def on_draw():
+        window.clear()
+
+        pyglet.gl.glLineWidth(3.0)
+        for s in spirals:
+            s.render()
+
+    def update(dt):
+        for s in spirals:
+            s.update(dt)
+
+    pyglet.clock.schedule_interval(update, 1 / 60.0)
+
+    pyglet.app.run()
 
 
 if __name__ == "__main__":
-    sys.exit(run())
+    run()
