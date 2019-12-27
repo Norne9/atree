@@ -4,7 +4,7 @@ I tried to make [atree](https://github.com/anvaka/atree) on python.
 
 Here is the result:
 
-![tree](https://user-images.githubusercontent.com/4660466/71518891-e9de6500-28d6-11ea-8b76-442839b20378.gif)
+![tree](https://user-images.githubusercontent.com/4660466/71519556-e0a2c780-28d9-11ea-94c2-0a0aa3529867.gif)
 
 ## How to run
 

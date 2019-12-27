@@ -5,7 +5,7 @@ from dataclasses import dataclass
 theta_min = 0.0
 theta_max = 8.0 * math.pi
 period = 40
-line_spacing = 1.0 / 6.0
+line_spacing = 1.0 / 10.0
 line_length = line_spacing / 2.0
 y_screen_offset = 300.0
 x_screen_offset = 240.0
@@ -105,7 +105,8 @@ def mul_color(color: tuple, alpha: float):
 
 
 def run():
-    window = pyglet.window.Window(480, 800, caption="Christmas Tree")
+    config = pyglet.gl.Config(sample_buffers=1, samples=4)
+    window = pyglet.window.Window(480, 800, caption="Christmas Tree", config=config)
 
     spirals = [
         Spiral(foreground=(34 / 255, 0, 0), angle_offset=math.pi * 0.92, factor=0.90 * g_factor),
@@ -119,8 +120,7 @@ def run():
     @window.event
     def on_draw():
         window.clear()
-
-        pyglet.gl.glLineWidth(3.0)
+        pyglet.gl.glLineWidth(2.0)
         for s in spirals:
             s.render()
 
