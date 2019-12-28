@@ -1,11 +1,11 @@
 import math
-import pyglet
+import pygame
 from dataclasses import dataclass
 
 theta_min = 0.0
 theta_max = 8.0 * math.pi
-period = 40
-line_spacing = 1.0 / 10.0
+period = 20
+line_spacing = 1.0 / 12.0
 line_length = line_spacing / 2.0
 y_screen_offset = 300.0
 x_screen_offset = 240.0
@@ -32,13 +32,14 @@ class Line:
 
 
 class Spiral:
-    def __init__(self, foreground: tuple, angle_offset: float, factor: float):
+    black = pygame.Color("#000000")
+
+    def __init__(self, foreground: pygame.Color, angle_offset: float, factor: float):
         self.foreground = foreground
         self.angle_offset = angle_offset
         self.factor = factor
         self.offset = 0
-        segments = self._compute_segments()
-        self.v_lists = [self._compute_buffer(s) for s in segments]
+        self.segments = self._compute_segments()
 
     def _compute_segments(self):
         segments = []
@@ -61,20 +62,16 @@ class Spiral:
             segments.append(lines)
         return segments
 
-    def _compute_buffer(self, lines):
-        vertices, colors = [], []
-        for line in lines:
-            vertices.extend([line.start.x, 800 - line.start.y, line.end.x, 800 - line.end.y])
-            colors.extend(mul_color(self.foreground, line.start.alpha) + mul_color(self.foreground, line.end.alpha))
-        return pyglet.graphics.vertex_list(len(vertices) // 2, ("v2f/static", vertices), ("c3f/static", colors))
+    def _draw_segment(self, screen, segment):
+        for line in segment:
+            color = self.black.lerp(self.foreground, line.start.alpha)
+            pygame.draw.aaline(screen, color, [line.start.x, line.start.y], [line.end.x, line.end.y])
 
-    def render(self):
-        self.v_lists[self.offset].draw(pyglet.gl.GL_LINES)
-
-    def update(self, dt: float):
-        self.offset -= 1
-        if self.offset <= -period:
-            self.offset += period
+    def render(self, screen):
+        self.offset += 1
+        if self.offset >= period:
+            self.offset -= period
+        self._draw_segment(screen, self.segments[self.offset])
 
 
 def get_point(theta, factor, angle_offset, rate):
@@ -83,7 +80,7 @@ def get_point(theta, factor, angle_offset, rate):
     z = -theta * factor * math.sin(theta + angle_offset)
 
     point = project2d(x, y, z)
-    point.alpha = math.atan((y * factor / rate * 0.1 + 0.02 - z) * 40) * 0.35 + 0.65
+    point.alpha = min(1.0, math.atan((y * factor / rate * 0.1 + 0.02 - z) * 40) * 0.35 + 0.65)
 
     return point
 
@@ -99,38 +96,35 @@ def project2d(x, y, z):
     )
 
 
-def mul_color(color: tuple, alpha: float):
-    r, g, b = color
-    return r * alpha, g * alpha, b * alpha
-
-
 def run():
-    config = pyglet.gl.Config(sample_buffers=1, samples=4)
-    window = pyglet.window.Window(480, 800, caption="Christmas Tree", config=config)
-
     spirals = [
-        Spiral(foreground=(34 / 255, 0, 0), angle_offset=math.pi * 0.92, factor=0.90 * g_factor),
-        Spiral(foreground=(0, 34 / 255, 17 / 255), angle_offset=-math.pi * 0.08, factor=0.90 * g_factor),
-        Spiral(foreground=(102 / 255, 0, 0), angle_offset=math.pi * 0.95, factor=0.93 * g_factor),
-        Spiral(foreground=(0, 51 / 255, 34 / 255), angle_offset=-math.pi * 0.05, factor=0.93 * g_factor),
-        Spiral(foreground=(1, 0, 0), angle_offset=math.pi, factor=g_factor),
-        Spiral(foreground=(0, 1, 204 / 255), angle_offset=0, factor=g_factor),
+        Spiral(foreground=pygame.Color("#220000"), angle_offset=math.pi * 0.92, factor=0.90 * g_factor),
+        Spiral(foreground=pygame.Color("#002211"), angle_offset=-math.pi * 0.08, factor=0.90 * g_factor),
+        Spiral(foreground=pygame.Color("#660000"), angle_offset=math.pi * 0.95, factor=0.93 * g_factor),
+        Spiral(foreground=pygame.Color("#003322"), angle_offset=-math.pi * 0.05, factor=0.93 * g_factor),
+        Spiral(foreground=pygame.Color("#ff0000"), angle_offset=math.pi, factor=g_factor),
+        Spiral(foreground=pygame.Color("#00ffcc"), angle_offset=0, factor=g_factor),
     ]
 
-    @window.event
-    def on_draw():
-        window.clear()
-        pyglet.gl.glLineWidth(2.0)
+    pygame.init()
+    screen = pygame.display.set_mode((480, 800))
+    pygame.display.set_caption("Christmas Tree")
+
+    done = False
+    clock = pygame.time.Clock()
+
+    while not done:
+        clock.tick(60)
+        for event in pygame.event.get():  # User did something
+            if event.type == pygame.QUIT:  # If user clicked close
+                done = True  # Flag that we are done so we exit this loop
+
+        screen.fill(0)
         for s in spirals:
-            s.render()
+            s.render(screen)
+        pygame.display.flip()
 
-    def update(dt):
-        for s in spirals:
-            s.update(dt)
-
-    pyglet.clock.schedule_interval(update, 1 / 60.0)
-
-    pyglet.app.run()
+    pygame.quit()
 
 
 if __name__ == "__main__":

@@ -8,9 +8,9 @@ Here is the result:
 
 ## How to run
 
-You need Python 3.7 (I haven't test other versions) and pyglet
+You need Python 3.7 (I haven't test other versions) and pygame
 
-Install pyglet as follows: `pip install pyglet`
+Install pygame as follows: `pip install pygame>=2.0.0.dev6`
 
 And now run the application: `python atree.py`
 
